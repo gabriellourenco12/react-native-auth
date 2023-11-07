@@ -7,8 +7,11 @@ import SignupScreen from './screens/SignupScreen';
 import WelcomeScreen from './screens/WelcomeScreen';
 import {Colors} from './constants/styles';
 import AuthContextProvider, {AuthContext} from "./store/auth-context";
-import {useContext} from "react";
+import {useCallback, useContext, useEffect} from "react";
 import IconButton from "./components/ui/IconButton";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import {View} from "react-native";
+import * as SplashScreen from "expo-splash-screen";
 
 const Stack = createNativeStackNavigator();
 
@@ -42,7 +45,7 @@ function AuthenticatedStack() {
                 component={WelcomeScreen}
                 options={{
                     headerRight: ({tintColor}) => (
-                        <IconButton icon={'exit'} color={tintColor} size={24} onPress={authCtx.logout} />)
+                        <IconButton icon={'exit'} color={tintColor} size={24} onPress={authCtx.logout}/>)
                 }}
             />
         </Stack.Navigator>
@@ -60,12 +63,45 @@ function Navigation() {
     );
 }
 
+function Root() {
+    const [appIsReady, setAppIsReady] = useContext(false);
+    const authCtx = useContext(AuthContext);
+
+    useEffect(() => {
+        async function checkAuth() {
+            const token = await AsyncStorage.getItem('token');
+            if (token) {
+                authCtx.authenticate(token);
+            }
+            setAppIsReady(true);
+        }
+
+        checkAuth();
+    }, []);
+
+    const onLayoutRootView = useCallback(async () => {
+        if (appIsReady) {
+            await SplashScreen.hideAsync();
+        }
+    }, [appIsReady]);
+
+    if (!appIsReady) {
+        return null;
+    }
+
+    return (
+        <View style={{flex: 1}} onLayout={onLayoutRootView}>
+            <Navigation/>
+        </View>
+    )
+}
+
 export default function App() {
     return (
         <>
             <StatusBar style="light"/>
             <AuthContextProvider>
-                <Navigation/>
+                <Root/>
             </AuthContextProvider>
         </>
     );
